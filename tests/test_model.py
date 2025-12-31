@@ -28,7 +28,7 @@ list_files = [
     'VolturnUS-S-flexible.yaml',
 ]
 
-save_references = True
+save_references = False
 plot_diffs = False
 
 # Get the directory of the current file
@@ -230,28 +230,37 @@ def test_analyzeCases(index_and_model, plotPSDs=False, flagSaveValues=False):
  To run as a script. Useful for debugging.
 '''
 if __name__ == "__main__":
-    index = 0
 
-    model = create_model(list_files[index])
-    test_solveStatics_Wind((index,model))
+    # When saving reference values, run all test cases
+    # When testing, just do first one to save time
+    if save_references:
+        test_indices = range(len(list_files))
+    else:
+        test_indices = range(1)
 
-    model = create_model(list_files[index])
-    test_solveStatics_Wave((index,model))
 
-    model = create_model(list_files[index])
-    test_solveStatics_Current((index,model))
+    for index in test_indices:
 
-    model = create_model(list_files[index])
-    test_solveStatics_Wind_Wave_Current((index,model))
+        model = create_model(list_files[index])
+        test_solveStatics_Wind((index,model))
 
-    model = create_model(list_files[index])
-    test_solveEigen_unloaded((index,model))
+        model = create_model(list_files[index])
+        test_solveStatics_Wave((index,model))
 
-    model = create_model(list_files[index])
-    test_solveEigen_loaded((index,model))
+        model = create_model(list_files[index])
+        test_solveStatics_Current((index,model))
 
-    model = create_model(list_files[index])
-    test_analyzeCases((index,model), plotPSDs=True, flagSaveValues=save_references)  # Set flagSaveValues to True to save new true values
+        model = create_model(list_files[index])
+        test_solveStatics_Wind_Wave_Current((index,model))
+
+        model = create_model(list_files[index])
+        test_solveEigen_unloaded((index,model))
+
+        model = create_model(list_files[index])
+        test_solveEigen_loaded((index,model))
+
+        model = create_model(list_files[index])
+        test_analyzeCases((index,model), plotPSDs=True, flagSaveValues=save_references)  # Set flagSaveValues to True to save new true values
 
     if save_references:
         # # pack reference values into a yaml file
