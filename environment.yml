@@ -6,7 +6,7 @@ channels:
 
 dependencies:
   - matplotlib
-  - moorpy
+  - moorpy>=1.2.1
   - numpy
   - openmdao > 3.30
   - pyhams

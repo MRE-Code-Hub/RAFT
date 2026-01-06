@@ -1328,16 +1328,16 @@ class FOWT():
                 for mem in self.memberList: 
                     if mem.potMod:          # >>>>>>>>>>>>>>>> now using for rectnagular member and the dimensions are hardcoded. need to integrate with the .yaml file input
                         if mem.shape == "circular":
-                            pnl.meshMember(mem.stations, mem.d, mem.rA, mem.rB, dz_max=dz, da_max=da, savedNodes=nodes, savedPanels=panels)
+                            pnl.meshMember(mem.stations, mem.d, mem.rA0, mem.rB0, dz_max=dz, da_max=da, savedNodes=nodes, savedPanels=panels)
                             # for GDF output
-                            vertices_i = pnl.meshMemberForGDF(mem.stations, mem.d, mem.rA, mem.rB, dz_max=dz, da_max=da)
+                            vertices_i = pnl.meshMemberForGDF(mem.stations, mem.d, mem.rA0, mem.rB0, dz_max=dz, da_max=da)
                             vertices = np.vstack([vertices, vertices_i])  # append the member's vertices to the master list
                         elif mem.shape == "rectangular":
                             widths = mem.sl[:, 0]
                             heights = mem.sl[:, 1]
-                            pnl.meshRectangularMember(mem.stations, widths, heights, mem.rA, mem.rB, dz_max=dz, dw_max=da, dh_max=dh, savedNodes=nodes, savedPanels=panels) #
+                            pnl.meshRectangularMember(mem.stations, widths, heights, mem.rA0, mem.rB0, dz_max=dz, dw_max=da, dh_max=dh, savedNodes=nodes, savedPanels=panels) #
                             # for GDF output
-                            vertices_i = pnl.meshRectangularMemberForGDF(mem.stations, widths, heights, mem.rA, mem.rB, dz_max=dz, dw_max=da, dh_max=dh)
+                            vertices_i = pnl.meshRectangularMemberForGDF(mem.stations, widths, heights, mem.rA0, mem.rB0, dz_max=dz, dw_max=da, dh_max=dh)
                             vertices = np.vstack([vertices, vertices_i])  # append the member's vertices to the master list
                 if len(panels) == 0:
                     print("WARNING: no panels to mesh.")
@@ -1360,7 +1360,7 @@ class FOWT():
                     stations = mem.stations
                     rA = mem.rA_original if hasattr(mem, "rA_original") else mem.rA
                     rB = mem.rB_original if hasattr(mem, "rB_original") else mem.rB
-                    headings = mem.heading if hasattr(mem, "heading") else [0]
+                    heading = mem.heading if hasattr(mem, "heading") else [0]
                     #print("name from raft:", mem.name)
                     #print("rA from raft: ",mem.rA)
                     #print("rB from raft: ", mem.rB)
@@ -1374,7 +1374,7 @@ class FOWT():
                             "rA": rA,
                             "rB": rB,
                             "radius": radius,
-                            "heading": headings,
+                            "heading": heading,
                             "stations": stations,
                             "diameters": diameters,
                             "extensionA": extensionA,
@@ -1392,7 +1392,7 @@ class FOWT():
                             "rB": rB,
                             "widths": widths,
                             "heights": heights,
-                            "heading": headings,
+                            "heading": heading,
                             "stations": stations,
                             "extensionA": extensionA,
                             "extensionB": extensionB
@@ -1498,7 +1498,7 @@ class FOWT():
             X_BEM[ih,5,:] = X_BEM_temp[ih,5,:]
             
             for iw in range(self.nw):
-                self.X_BEM[ih, :6, iw] = transformForce(X_BEM[ih,:,iw], offset= -self.nodeList[self.reducedDOF[0][0]].r[:3])
+                self.X_BEM[ih, :6, iw] = transformForce(X_BEM[ih,:,iw], offset= -self.nodeList[self.reducedDOF[0][0]].r0[:3])
 
         # HAMS results error checks  >>> any more we should have? <<<
         if np.isnan(self.A_BEM).any():
@@ -1555,6 +1555,8 @@ class FOWT():
                     f_aero0, f_aero, a_aero, b_aero = rot.calcAero(case, current=current)  # get values about hub
                     
                     # Transform quantities to the reduced set of dofs
+                    # TODO: This is different from other parts of the code where I used _fullDOF matrix and then transformed to reduced DOFs.
+                    #       The idea was to use the T.T matrix as a sort of a locator matrix, but not sure how correct this is. Change that later
                     T = rot.nodeList[0].T # transformation matrix from the reduced set of dofs of the FOWT to the 6 dofs of the rotor node
                     self.f_aero0[:,ir] = T.T @ f_aero0  # mean forces and moments
                     for iw in range(self.nw):
@@ -2505,6 +2507,7 @@ class FOWT():
             mem_tower = self.memberList[self.nplatmems+ir]
 
             # For now, using same method as before for rigid towers
+            # TODO: remove this and compute tower base loads based on the reaction loads at the tower-bottom joint
             if mem_tower.type == 'rigid':
                 m_turbine[ir] = self.mtower[ir] + rotor.mRNA  # total masses of each turbine
                 zCG_turbine[ir] = (self.rCG_tow[ir][2]*self.mtower[ir]                 # CoG of each turbine
@@ -2529,9 +2532,7 @@ class FOWT():
                 dynamic_moment_RMS[ir] = getRMS(dynamic_moment[:,ir,:])
 
                 # fill in metrics
-                # mean moment from weight and thrust
-                results['Mbase_avg'][ir] = (m_turbine[ir]*self.g * hArm[ir]*np.sin(self.Xi0[4]) 
-                            + transformForce(self.rotorList[0].nodeList[0].T@self.f_aero0[:,ir], offset=[0,0,-hArm[ir]])[4] )
+                results['Mbase_avg'][ir] = (m_turbine[ir]*self.g * hArm[ir]*np.sin(self.Xi0[4]) + transformForce(self.rotorList[ir].f0, offset=[0,0,self.rotorList[ir].nodeList[0].r0[2]-hArm[ir]])[4] )
                 results['Mbase_std'][ir] = dynamic_moment_RMS[ir]
                 results['Mbase_PSD'][:,ir] = (getPSD(dynamic_moment[:,ir,:], self.dw))
                 results['Mbase_max'][ir] = results['Mbase_avg'][ir]+3*results['Mbase_std'][ir]
@@ -2744,8 +2745,15 @@ class FOWT():
     
     def plot(self, ax, color=None, nodes=0, plot_rotor=True, station_plot=[], 
              airfoils=False, zorder=2, plot_fowt=True, plot_ms=True, 
-             shadow=True, plot_frame=False, mp_args={}, frame_opts={}, plot_joints=False):
+             shadow=True, plot_frame=False, mp_args={}, frame_opts={}, plot_joints=False, axes_around_fowt=None):
         '''plots the FOWT...'''
+
+        # Assign values to axes_around_fowt if not specified by the user
+        if axes_around_fowt is None:
+            if plot_ms:
+                axes_around_fowt=False # Do not zoom in on the FOWT
+            else:
+                axes_around_fowt=True  # Zoom in on the FOWT
 
         R = rotationMatrix(self.r6[3], self.r6[4], self.r6[5])  # note: eventually Rotor could handle orientation internally <<<
 
@@ -2787,8 +2795,8 @@ class FOWT():
                 color = 'green' if joint['type'] == 'ball' else 'red'
                 ax.scatter(joint['r'][0], joint['r'][1], joint['r'][2], color=color, marker='o', facecolors='None')
 
-        # The code below makes the plot look nicer if plotting the FOWT without its mooring system 
-        if not plot_ms:
+        # The code below makes the plot zoom into the FOWT. Useful when plotting the FOWT without its mooring system
+        if axes_around_fowt:
             # Set equal aspect ratio
             ax.set_box_aspect([1, 1, 1])  # Aspect ratio is 1:1:1
 
