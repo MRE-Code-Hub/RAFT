@@ -322,8 +322,9 @@ class RAFT_OMDAO(om.ExplicitComponent):
         # Aggregate outputs
         self.add_output('Max_Offset', val = 0, desc = 'Maximum distance in surge/sway direction', units = 'm') 
         self.add_output('heave_avg', val = 0, desc = 'Average heave over all cases', units = 'm') 
-        self.add_output('Max_PtfmPitch', val = 0, desc = 'Maximum platform pitch over all cases', units = 'deg') 
-        self.add_output('Std_PtfmPitch', val = 0, desc = 'Average platform pitch std. over all cases', units = 'deg') 
+        self.add_output('Max_PtfmPitch', val = 0, desc = 'Maximum platform pitch over all cases', units = 'deg')
+        self.add_output('Mean_PtfmPitch', val = 0, desc = 'Maximum mean platform pitch over all cases', units = 'deg')
+        self.add_output('Std_PtfmPitch', val = 0, desc = 'Average platform pitch std. over all cases', units = 'deg')
         self.add_output('max_nac_accel', val = 0, desc = 'Maximum nacelle accelleration over all cases', units = 'm/s**2') 
         self.add_output('rotor_overspeed', val = 0, desc = 'Fraction above rated rotor speed') 
         self.add_output('max_tower_base', val = 0, desc = 'Maximum tower base moment over all cases', units = 'N*m') 
@@ -870,6 +871,7 @@ class RAFT_OMDAO(om.ExplicitComponent):
             outputs['Max_Offset'] = np.sqrt(outputs['stats_surge_max'][case_mask]**2 + outputs['stats_sway_max'][case_mask]**2).max()
             outputs['heave_avg'] = outputs['stats_heave_avg'][case_mask].mean()
             outputs['Max_PtfmPitch'] = outputs['stats_pitch_max'][case_mask].max()
+            outputs['Mean_PtfmPitch'] = outputs['stats_pitch_avg'][case_mask].max()
             outputs['Std_PtfmPitch'] = outputs['stats_pitch_std'][case_mask].mean()
             outputs['max_nac_accel'] = outputs['stats_AxRNA_max'][case_mask].max()
             outputs['rotor_overspeed'] = (outputs['stats_omega_max'][case_mask].max() - inputs['rated_rotor_speed']) / inputs['rated_rotor_speed']
